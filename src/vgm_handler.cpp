@@ -1,60 +1,89 @@
+/**
+ * @file vgm_handler.cpp
+ * @author Taisuke Watanabe (famicom.neet@gmail.com)
+ * @brief VGM File handler
+ * @version 0.1
+ * @date 2022-08-11
+ *
+ * @copyright Copyright (c) 2022 Taisuke Watanabe
+ *
+ */
+
 #include "vgm_handler.h"
+#include "YMF262.h"
 
-uint8_t *vgmData;
-File vgm;
+YMF262 myYM262 = YMF262();
 
-uint8_t getVGM8(uint8_t *vgmDataBuf) { return vgmDataBuf[vgmPos]; }
+VGMHandler::VGMHandler() {}
+uint8_t VGMHandler::getVGM8(uint8_t *vgmDataBuf) { return vgmDataBuf[vgmPos]; }
 
-uint16_t getVGM16(uint8_t *vgmDataBuf) {
+uint16_t VGMHandler::getVGM16(uint8_t *vgmDataBuf) {
   return getVGM8(vgmDataBuf) + (getVGM8(vgmDataBuf) << 8);
 }
 
-uint32_t getVGM32(uint8_t *vgmDataBuf) {
+uint32_t VGMHandler::getVGM32(uint8_t *vgmDataBuf) {
   return getVGM8(vgmDataBuf) + (getVGM8(vgmDataBuf) << 8) +
          (getVGM8(vgmDataBuf) << 16) + (getVGM8(vgmDataBuf) << 24);
 }
 
-uint8_t openVGM(uint8_t *filename) {
-  vgm = SD.open(filename);
+int32_t VGMHandler::begin(File *vgmFp) {
+  // vgm = SD.open(filename);
   if (vgm == NULL) {
-    return NULL;
+    return false;
   } else {
-    return TRUE;
+    vgm = vgmFp;
+    return true;
   }
 }
 
-uint32_t playVGM() { parseVGM(); }
+uint32_t VGMHandler::getVGMPos() { return vgmPos; }
+void VGMHandler::waitSpecified(uint16_t samples) {}
+void VGMHandler::endParse() { vgm->close(); }
 
-uint32_t parseVGM() {
-  uint8_t cmd;
-  uint8_t reg;
-  uint8_t data8;
+int32_t VGMHandler::playVGM() { return true; }
+
+int32_t VGMHandler::parseVGM() {
+  uint8_t vgmCMD;
+  uint8_t chipData;
+  uint8_t chipAddr;
   uint16_t data16;
 
-  cmd = getVGM8();
+  vgmCMD = getVGM8(vgmData);
+  vgmPos++;
 
-  switch (cmd) {
+  switch (vgmCMD) {
   // for YMF262
   case 0x5E:
-    data16 = getVGM16();
-    YMF262.write0(data16);
+    chipData = getVGM8(vgmData);
+    chipAddr = getVGM8(vgmData);
+    myYM262.write0(chipAddr, chipData);
+    vgmPos += 2;
     break;
   case 0x5F:
-    data16 = getVGM16();
-    YMF262.write1(data16);
+    chipData = getVGM8(vgmData);
+    chipAddr = getVGM8(vgmData);
+    myYM262.write1(chipAddr, chipData);
+    vgmPos += 2;
     break;
   case 0x50:
-    reg = getVGM8(vgmData);
-    data = getVGM8(vgmData);
-    SN76489.write(reg, data8);
+    chipData = getVGM8(vgmData);
+    chipAddr = getVGM8(vgmData);
+    // SN76489.write(reg, data8);
+    vgmPos += 2;
     break;
   case 0x61:
-    wait();
+    data16 = getVGM16(vgmData);
+    waitSpecified(data16);
+    vgmPos += 2;
     break;
   case 0x62:
   case 0x63:
   case 0x66:
-    end();
+    endParse();
+    break;
+  default:
+    vgmPos++;
     break;
   }
+  return true;
 }

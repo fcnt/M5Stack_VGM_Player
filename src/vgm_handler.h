@@ -1,12 +1,19 @@
 /**
- * VGMヘッダ定義、ヘッダハンドラクラス
- * (c) TaisukeWatanabe 2022/1/16
+ * @file vgm_handler.h
+ * @author Taisuke Watanabe (famicom.neet@gmail.com)
+ * @brief YMF262 driver header
+ * @version 0.1
+ * @date 2022-08-11
+ *
+ * @copyright Copyright (c) 2022 Taisuke Watanabe
+ *
  */
 
 #ifndef VGM_HEADER_H_
 #define VGM_HEADER_H_
 
 #include <Arduino.h>
+#include <M5Stack.h>
 
 typedef struct VGM_header {
   // for VGM ver1.70
@@ -94,7 +101,6 @@ typedef struct VGM_header {
   // 0xE0
   uint32_t GA20Clk;
   uint32_t skip_04[3];
-
   // 0xF0
   uint32_t skip_05[4];
 } VGM_header_t;
@@ -114,21 +120,35 @@ typedef struct GD3_tag {
   uint16_t *memo;
 } GD3_tag_t;
 
+typedef struct VGMFile {
+  VGM_header_t *pVGMHeader;
+  GD3_tag_t *pGD3_tag_t;
+  uint8_t *data;
+} VGMFile_t;
+
 class VGMHandler {
 private:
+  uint8_t *vgmData;
+  File *vgm;
+  uint32_t vgmPos = 0;
+
   VGM_header_t *pVGMHeader;
   GD3_tag_t *pGD3_tag_t;
 
-  uint8_t getVGM8();
-  uint16_t getVGM16();
+  uint8_t getVGM8(uint8_t *);
+  uint16_t getVGM16(uint8_t *);
+  uint32_t getVGM32(uint8_t *);
+  void waitSpecified(uint16_t);
+  void endParse();
 
 public:
-  int32_t begin(char *filename);
-  File openVGMFile(char *filename);
-  int32_t parseVGMHeader(File *vgmFile);
+  VGMHandler();
+  int32_t begin(File *);
+  int32_t parseVGMHeader(uint8_t *);
   uint32_t getVGMDataOffset();
-  int32_t parseVGMData();
+  int32_t parseVGM();
   int32_t playVGM();
+  uint32_t getVGMPos();
 };
 
 #endif

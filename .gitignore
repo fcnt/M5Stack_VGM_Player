@@ -31,3 +31,9 @@
 *.out
 *.app
 .clang_complete
+*.checksum
+*.json
+*.json
+*.checksum
+.pio/
+.vscode/
